@@ -9,7 +9,7 @@ import { Send, Loader2, Bot, User } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 const ChatUi = () => {
-  const { assistant } = useContext(AssistantContext);
+  const { assistant, setAssistant } = useContext(AssistantContext);
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,6 +17,44 @@ const ChatUi = () => {
 
   const scrollToBottom = () => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Function to clean AI response
+  const cleanAIResponse = (text: string) => {
+    if (!text) return text;
+
+    // Remove markdown formatting
+    let cleanedText = text
+      // Remove **bold**
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      // Remove *italic*
+      .replace(/\*(.*?)\*/g, "$1")
+      // Remove __underline__
+      .replace(/__(.*?)__/g, "$1")
+      // Remove ~~strikethrough~~
+      .replace(/~~(.*?)~~/g, "$1")
+      // Remove # headers
+      .replace(/^#+\s+/gm, "")
+      // Remove bullet points and numbering
+      .replace(/^[\*\-]\s+/gm, "")
+      .replace(/^\d+\.\s+/gm, "")
+      // Remove code blocks ```
+      .replace(/```[\s\S]*?```/g, "")
+      // Remove inline code `
+      .replace(/`(.*?)`/g, "$1")
+      // Remove extra spaces and clean up
+      .replace(/\n\s*\n\s*\n/g, "\n\n")
+      .trim();
+
+    // Ensure proper spacing and formatting
+    cleanedText = cleanedText
+      .replace(/\n/g, "\n\n") // Add proper line breaks
+      .replace(/\s+\./g, ".") // Remove spaces before periods
+      .replace(/\s+,/g, ",") // Remove spaces before commas
+      .replace(/\s+!/g, "!") // Remove spaces before exclamation
+      .replace(/\s+\?/g, "?"); // Remove spaces before question marks
+
+    return cleanedText;
   };
 
   // Reset messages when switching assistant
@@ -31,6 +69,7 @@ const ChatUi = () => {
   const sendMessage = async () => {
     if (!input.trim() || !assistant) return;
 
+    // Frontend par sirf user ka input show hoga
     const userMsg = {
       role: "user",
       content: input,
@@ -41,15 +80,19 @@ const ChatUi = () => {
     setLoading(true);
 
     try {
+      // Backend mein instruction + user input combine hoke jayega
       const response = await axios.post("/api/google-gemini", {
-        userInput: input,
-        userInstruction: assistant?.userInstruction,
+        userInput: input, // User ka original input
+        userInstruction: assistant?.userInstruction, // Instruction alag field mein
         model: assistant?.aiModelId,
       });
 
+      // Clean the AI response before displaying
+      const cleanedContent = cleanAIResponse(response.data.content);
+
       const aiMsg = {
         role: "assistant",
-        content: response.data.content || "No response.",
+        content: cleanedContent || "No response.",
         timestamp: new Date(),
       };
 
@@ -163,7 +206,9 @@ const ChatUi = () => {
                       : "bg-white border border-gray-200 rounded-bl-none shadow-sm"
                   }`}
                 >
-                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                  <div className="whitespace-pre-wrap leading-relaxed">
+                    {msg.content}
+                  </div>
                   <div
                     className={`text-xs mt-2 ${
                       msg.role === "user" ? "text-blue-100" : "text-gray-400"
@@ -232,8 +277,7 @@ const ChatUi = () => {
         {/* Instruction Indicator */}
         {assistant?.userInstruction && (
           <div className="mt-2 text-xs text-gray-500 text-center">
-            Assistant following:{" "}
-            <span className="font-medium">"{assistant.userInstruction}"</span>
+            Assistant following custom instructions
           </div>
         )}
       </div>
