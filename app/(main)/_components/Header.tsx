@@ -193,7 +193,7 @@ const Header = () => {
                     Sign In
                   </Button>
                 </Link>
-                <Link href="/sign-up">
+                <Link href="/sign-in">
                   <Button className="bg-blue-600 hover:bg-blue-700 text-white">
                     Get Started
                   </Button>
